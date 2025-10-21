@@ -1,10 +1,90 @@
+'use client';
 import { Button, Card, Divider, Grid, Link, Text } from '@nextui-org/react';
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckIcon } from '../icons/CheckIcon';
 import { Box } from '../styles/box';
 import { Flex } from '../styles/flex';
 
+// Contoh produk (bisa kamu ubah sesuai plan)
+const products = [
+  { id: 'free', name: 'Free', price: 0 },
+  { id: 'premium', name: 'Premium', price: 19000 },
+  { id: 'startup', name: 'Startup', price: 99000 },
+  { id: 'enterprise', name: 'Enterprise', price: 199000 },
+];
+
 export const Plans = () => {
+  const [paymentLink, setPaymentLink] = useState<string>("");
+
+  const checkout = async (product: any) => {
+    const data = {
+      id: product.id,
+      productName: product.name,
+      price: product.price,
+      quantity: 1,
+    };
+
+    try {
+      const response = await fetch('/api/tokenizer', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const responseData = await response.json();
+      if (!responseData?.token) throw new Error('Invalid response data');
+
+      (window as any).snap.pay(responseData.token);
+    } catch (error: any) {
+      console.error('Error during checkout:', error.message);
+      alert('Gagal memulai pembayaran. Coba lagi.');
+    }
+  };
+
+  const generatePaymentLink = async (product: any) => {
+    const secret: any = process.env.NEXT_PUBLIC_SECRET;
+    const encodedSecret = Buffer.from(secret).toString('base64');
+    const basicAuth = `Basic ${encodedSecret}`;
+
+    const data = {
+      item_details: [
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity: 1,
+        },
+      ],
+      transaction_details: {
+        order_id: `${product.id}-${Date.now()}`,
+        gross_amount: product.price,
+      },
+    };
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API}/v1/payment-links`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: basicAuth,
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      const result = await response.json();
+      setPaymentLink(result.payment_url);
+      window.open(result.payment_url, '_blank');
+    } catch (error) {
+      console.error('Error creating payment link:', error);
+      alert('Gagal membuat payment link');
+    }
+  };
+
   return (
     <>
       <Flex
@@ -21,249 +101,75 @@ export const Plans = () => {
           <Text h2>Flexible Plans</Text>
         </Flex>
 
-        <Flex
-          css={{ gap: '2rem', width: '100%' }}
-          wrap={'wrap'}
-          justify={'center'}
-        >
-          <Card css={{ p: '$6', mw: '400px' }}>
-            <Card.Header>
-              <Grid.Container css={{ pl: '$6' }}>
-                <Grid xs={12}>
-                  <Text h4 css={{ lineHeight: '$xs' }}>
-                    Free
-                  </Text>
-                </Grid>
-                <Grid xs={12}>
-                  <Text css={{ color: '$accents8' }}>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                    condimentum, nisl ut aliquam lacinia, elit
-                  </Text>
-                </Grid>
-              </Grid.Container>
-            </Card.Header>
-            <Card.Body css={{ py: '$4' }}>
-              <Text css={{ display: 'contents' }} h2>
-                $0{' '}
-              </Text>
-              <Text css={{ display: 'contents', color: '$accents8' }}>/mo</Text>
-              <Button css={{ mt: '$7', mb: '$12' }}>Get Started</Button>
+        <Flex css={{ gap: '2rem', width: '100%' }} wrap={'wrap'} justify={'center'}>
+          {products.map((product) => (
+            <Card key={product.id} css={{ p: '$6', mw: '400px' }}>
+              <Card.Header>
+                <Grid.Container css={{ pl: '$6' }}>
+                  <Grid xs={12}>
+                    <Text h4 css={{ lineHeight: '$xs' }}>
+                      {product.name}
+                    </Text>
+                  </Grid>
+                  <Grid xs={12}>
+                    <Text css={{ color: '$accents8' }}>
+                      Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed condimentum, nisl ut aliquam lacinia.
+                    </Text>
+                  </Grid>
+                </Grid.Container>
+              </Card.Header>
 
-              <Divider />
-              <Box as={'ul'}>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    1 Team Members
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    1 Website
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    1 GB Storage
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    1 TB Transfer
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    Email Support
-                  </Text>
-                </Flex>
-              </Box>
-            </Card.Body>
-          </Card>
-          <Card css={{ p: '$6', mw: '400px' }}>
-            <Card.Header>
-              <Grid.Container css={{ pl: '$6' }}>
-                <Grid xs={12}>
-                  <Text h4 css={{ lineHeight: '$xs' }}>
-                    Premiun
-                  </Text>
-                </Grid>
-                <Grid xs={12}>
-                  <Text css={{ color: '$accents8' }}>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                    condimentum, nisl ut aliquam lacinia, elit
-                  </Text>
-                </Grid>
-              </Grid.Container>
-            </Card.Header>
-            <Card.Body css={{ py: '$4' }}>
-              <Text css={{ display: 'contents' }} h2>
-                $19{' '}
-              </Text>
-              <Text css={{ display: 'contents', color: '$accents8' }}>/mo</Text>
-              <Button css={{ mt: '$7', mb: '$12' }}>Get Started</Button>
+              <Card.Body css={{ py: '$4' }}>
+                <Text css={{ display: 'contents' }} h2>
+                  {product.price === 0 ? '$0' : `$${product.price / 1000}`}
+                </Text>
+                <Text css={{ display: 'contents', color: '$accents8' }}>/mo</Text>
 
-              <Divider />
-              <Box as={'ul'}>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    5 Team Members
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    5 Website
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    5 GB Storage
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    5 TB Transfer
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    Email Support
-                  </Text>
-                </Flex>
-              </Box>
-            </Card.Body>
-          </Card>
-          <Card css={{ p: '$6', mw: '400px' }}>
-            <Card.Header>
-              <Grid.Container css={{ pl: '$6' }}>
-                <Grid xs={12}>
-                  <Text h4 css={{ lineHeight: '$xs' }}>
-                    Startup
-                  </Text>
-                </Grid>
-                <Grid xs={12}>
-                  <Text css={{ color: '$accents8' }}>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                    condimentum, nisl ut aliquam lacinia, elit
-                  </Text>
-                </Grid>
-              </Grid.Container>
-            </Card.Header>
-            <Card.Body css={{ py: '$4' }}>
-              <Text css={{ display: 'contents' }} h2>
-                $99{' '}
-              </Text>
-              <Text css={{ display: 'contents', color: '$accents8' }}>/mo</Text>
-              <Button css={{ mt: '$7', mb: '$12' }}>Get Started</Button>
+                {product.price > 0 ? (
+                  <>
+                    <Button css={{ mt: '$7', mb: '$4' }} onClick={() => checkout(product)}>
+                      Checkout via Snap
+                    </Button>
+                    <Button
+                      css={{ mb: '$12' }}
+                      color="secondary"
+                      onClick={() => generatePaymentLink(product)}
+                    >
+                      Generate Payment Link
+                    </Button>
+                  </>
+                ) : (
+                  <Button css={{ mt: '$7', mb: '$12' }}>Get Started</Button>
+                )}
 
-              <Divider />
-              <Box as={'ul'}>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    30 Team Members
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    30 Website
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    30 GB Storage
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    30 TB Transfer
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    Email Support
-                  </Text>
-                </Flex>
-              </Box>
-            </Card.Body>
-          </Card>
-          <Card css={{ p: '$6', mw: '400px' }}>
-            <Card.Header>
-              <Grid.Container css={{ pl: '$6' }}>
-                <Grid xs={12}>
-                  <Text h4 css={{ lineHeight: '$xs' }}>
-                    Entreprise
-                  </Text>
-                </Grid>
-                <Grid xs={12}>
-                  <Text css={{ color: '$accents8' }}>
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
-                    condimentum, nisl ut aliquam lacinia, elit
-                  </Text>
-                </Grid>
-              </Grid.Container>
-            </Card.Header>
-            <Card.Body css={{ py: '$4' }}>
-              <Text css={{ display: 'contents' }} h2>
-                $199{' '}
-              </Text>
-              <Text css={{ display: 'contents', color: '$accents8' }}>/mo</Text>
-              <Button css={{ mt: '$7', mb: '$12' }}>Get Started</Button>
-
-              <Divider />
-              <Box as={'ul'}>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    100 Team Members
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    100 Website
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    100 GB Storage
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    100 TB Transfer
-                  </Text>
-                </Flex>
-                <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
-                  <CheckIcon />
-                  <Text span css={{ color: '$accents8' }}>
-                    Email Support
-                  </Text>
-                </Flex>
-              </Box>
-            </Card.Body>
-          </Card>
+                <Divider />
+                <Box as={'ul'}>
+                  <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
+                    <CheckIcon />
+                    <Text span css={{ color: '$accents8' }}>
+                      Team Members
+                    </Text>
+                  </Flex>
+                  <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
+                    <CheckIcon />
+                    <Text span css={{ color: '$accents8' }}>
+                      Website Hosting
+                    </Text>
+                  </Flex>
+                  <Flex as={'li'} css={{ py: '$2', gap: '$2' }} align={'center'}>
+                    <CheckIcon />
+                    <Text span css={{ color: '$accents8' }}>
+                      Email Support
+                    </Text>
+                  </Flex>
+                </Box>
+              </Card.Body>
+            </Card>
+          ))}
         </Flex>
       </Flex>
 
-      <Divider
-        css={{ position: 'absolute', inset: '0p', left: '0', mt: '$5' }}
-      />
+      <Divider css={{ position: 'absolute', inset: '0p', left: '0', mt: '$5' }} />
     </>
   );
 };
